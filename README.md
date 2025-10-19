@@ -147,13 +147,13 @@ KAFKA_SOCKET_TIMEOUT=60000
 
   
 
-Add to `config/app.php` providers array:
+Add to `bootstrap/providers.php` providers array:
 
   
 
 ```php
 
-'providers' => [
+return [
 	// ...
 	App\Providers\KafkaProvider::class,
 ],
