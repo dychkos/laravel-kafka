@@ -1,61 +1,416 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+﻿
+# Laravel Kafka Integration with php-rdkafka
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+  
 
-## About Laravel
+Complete guide for integrating Apache Kafka with Laravel using the `arnaud-lb/php-rdkafka` library.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+  
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Table of Contents
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+  
 
-## Learning Laravel
+- [Installation](#installation)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- [Configuration](#configuration)
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+- [Architecture](#architecture)
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- [Quick Start](#quick-start)
 
-## Laravel Sponsors
+- [Publishing Messages](#publishing-messages)
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+- [Consuming Messages](#consuming-messages)
 
-### Premium Partners
+- [Docker Setup](#docker-setup)
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+  
 
-## Contributing
+## Installation
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+  
 
-## Code of Conduct
+### Prerequisites
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+  
 
-## Security Vulnerabilities
+- PHP 8.0+
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+- Laravel 9+
 
-## License
+- Apache Kafka 2.0+
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+- librdkafka C library
+
+  
+
+### Step 1: Install Dependencies
+
+  
+
+```bash
+
+composer require arnaud-lb/php-rdkafka
+
+```
+
+  
+
+### Step 2: Install librdkafka
+
+  
+
+****macOS:****
+
+```bash
+
+brew install librdkafka
+
+```
+
+  
+
+****Ubuntu/Debian:****
+
+```bash
+
+sudo apt-get install librdkafka-dev pkg-config
+
+```
+
+  
+
+****Docker:****
+
+The provided Dockerfile includes all dependencies.
+
+  
+
+### Step 3: Enable PHP Extension
+
+  
+
+```bash
+
+pecl install rdkafka
+
+echo "extension=rdkafka.so" >> /etc/php.ini
+
+```
+
+  
+
+Verify installation:
+
+```bash
+
+php -m | grep rdkafka
+
+```
+
+  
+
+## Configuration
+
+  
+
+### 1. Create Config File
+
+  
+
+Create `config/kafka.php`:
+
+  
+
+```php
+
+return [
+
+'brokers' => env('KAFKA_BROKERS', 'localhost:9092'),
+
+'group_id' => env('KAFKA_GROUP_ID', 'laravel-consumer-group'),
+
+'client_id' => env('KAFKA_CLIENT_ID', 'laravel-client'),
+
+'auto_offset_reset' => env('KAFKA_AUTO_OFFSET_RESET', 'earliest'),
+
+'enable_auto_commit' => env('KAFKA_AUTO_COMMIT', true),
+
+'session_timeout_ms' => env('KAFKA_SESSION_TIMEOUT', 6000),
+
+'socket_timeout_ms' => env('KAFKA_SOCKET_TIMEOUT', 60000),
+
+];
+
+```
+
+  
+
+### 2. Set Environment Variables
+
+  
+
+In your `.env` file:
+
+  
+
+```bash  
+# For local development
+
+# KAFKA_BROKERS=localhost:9092
+
+  
+
+# For Docker container networking
+
+# KAFKA_BROKERS=kafka:29092
+
+  
+
+KAFKA_GROUP_ID=laravel-consumer-group
+KAFKA_CLIENT_ID=laravel-client
+KAFKA_AUTO_OFFSET_RESET=earliest
+KAFKA_AUTO_COMMIT=true
+KAFKA_SESSION_TIMEOUT=6000
+KAFKA_SOCKET_TIMEOUT=60000
+
+```
+
+  
+
+### 3. Register Provider
+
+  
+
+Add to `config/app.php` providers array:
+
+  
+
+```php
+
+'providers' => [
+	// ...
+	App\Providers\KafkaProvider::class,
+],
+
+```
+
+  
+
+## Architecture
+
+  
+
+### Core Components
+
+  
+
+#### 1. ****KafkaProvider**** (`app/Providers/KafkaProvider.php`)
+
+Service provider that registers Producer and Consumer in the service container.
+
+  
+
+Methods:
+
+- `createProducer()` - Returns configured Producer instance
+
+- `createConsumer()` - Returns configured Consumer instance
+
+  
+
+#### 2. ****KafkaService**** (`app/Services/KafkaService.php`)
+
+High-level service for Kafka operations.
+
+  
+
+Methods:
+
+- `publishMessage(KafkaTopicEnum $topic, array $payload, ?string $key)` - Publish single message
+
+- `publishBatch(KafkaTopicEnum $topic, array $messages)` - Publish multiple messages
+
+- `consume(KafkaTopicEnum|array $topics, callable $callback, int $timeout, ?int $maxMessages)` - Consume messages
+
+- `getProducer()` - Get raw Producer instance
+
+- `getConsumer()` - Get raw Consumer instance
+  
+
+## Quick Start
+
+  
+
+### Publishing a Message
+
+  
+
+```php
+
+use App\Components\Kafka\Enums\KafkaTopicEnum;
+use App\Components\Kafka\Interfaces\KafkaServiceInterface;
+ 
+class UserController extends Controller
+{
+
+	public function store(KafkaServiceInterface $kafka)
+	{
+		$kafka->publishMessage(
+			topic: KafkaTopicEnum::USER_REGISTRATION,
+			payload: [
+			'event' => 'user.created',
+			'user_id' => 123,
+			'email' => 'user@example.com',
+			'timestamp' => now()->toIso8601String(),
+			],
+			key: 'user_123'
+		);
+
+		return response()->json(['status' => 'published']);
+		}
+	}
+}
+
+```
+
+  
+
+### Consuming Messages
+
+  
+
+```bash
+
+sail artisan kafka:consume user-events
+
+```
+
+  
+
+
+
+## Publishing Messages
+
+  
+
+### Single Message
+
+  
+
+```php
+
+$kafka->publishMessage(
+	topic: KafkaTopicEnum::DEFAULT->value,
+	payload: [
+		'order_id' => 456,
+		'amount' => 99.99,
+		'status' => 'pending',
+	],
+	key: 'order_456'
+);
+
+```
+
+  
+
+### Batch Messages
+
+  
+
+```php
+
+$kafka->publishBatch(KafkaTopicEnum::DEFAULT->value, [
+	[
+		'payload' => ['order_id' => 1, 'status' => 'shipped'],
+		'key' => 'order_1'
+	],
+
+	[
+		'payload' => ['order_id' => 2, 'status' => 'delivered'],
+		'key' => 'order_2'
+	],
+]);
+
+```
+  
+
+## Docker Setup
+
+  
+
+### Using Docker Compose
+
+  
+
+```bash
+
+docker-compose up -d
+
+```
+
+  
+
+Kafka will be available at `kafka:29092` (internal) and `localhost:9092` (external).
+
+ 
+
+### Creating Topics
+
+  
+
+Inside Kafka container:
+
+  
+
+```bash
+
+docker compose exec kafka kafka-topics --create \
+--topic user-events \
+--bootstrap-server localhost:9092 \
+--partitions 1 \
+--replication-factor 1
+```
+
+  
+
+### Listing Topics
+
+  
+
+```bash
+
+docker compose exec kafka kafka-topics --list --bootstrap-server localhost:9092
+
+```
+
+  
+
+### Monitoring Messages
+
+  
+
+```bash
+
+docker compose exec kafka kafka-console-consumer \
+--topic user-events \
+--bootstrap-server localhost:9092 \
+--from-beginning
+
+```
+
+  
+
+## Resources
+
+  
+
+- [Apache Kafka Documentation](https://kafka.apache.org/documentation/)
+
+- [php-rdkafka Documentation](https://github.com/arnaud-lb/php-rdkafka)
+
+- [Confluent Kafka Documentation](https://docs.confluent.io/)
+
+- [Laravel Service Container](https://laravel.com/docs/container)
+
