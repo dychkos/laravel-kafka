@@ -45,59 +45,31 @@ Complete guide for integrating Apache Kafka with Laravel using the `arnaud-lb/ph
 
   
 
-### Step 1: Install Dependencies
+### Install Dependencies
 
-  
+### Using Docker
 
-```bash
+All required dependencies are already included in the provided Dockerfile. If you are running the project inside the Docker container, you don’t need to install anything manually.
 
-composer require arnaud-lb/php-rdkafka
+### Local Environment Setup
 
-```
+If you need to run the project outside Docker, follow these steps:
 
-  
+### Install librdkafka
 
-### Step 2: Install librdkafka
+#### macOS:
 
-  
+`brew install librdkafka`
 
-****macOS:****
 
-```bash
+#### Ubuntu/Debian:
 
-brew install librdkafka
+`sudo apt-get install librdkafka-dev pkg-config`
 
-```
+Enable the PHP Extension
 
-  
-
-****Ubuntu/Debian:****
-
-```bash
-
-sudo apt-get install librdkafka-dev pkg-config
-
-```
-
-  
-
-****Docker:****
-
-The provided Dockerfile includes all dependencies.
-
-  
-
-### Step 3: Enable PHP Extension
-
-  
-
-```bash
-
-pecl install rdkafka
-
-echo "extension=rdkafka.so" >> /etc/php.ini
-
-```
+`pecl install rdkafka
+echo "extension=rdkafka.so" >> /etc/php.ini`
 
   
 
@@ -156,18 +128,10 @@ In your `.env` file:
   
 
 ```bash  
-# For local development
-
-# KAFKA_BROKERS=localhost:9092
-
-  
 
 # For Docker container networking
 
-# KAFKA_BROKERS=kafka:29092
-
-  
-
+KAFKA_BROKERS=kafka:29092
 KAFKA_GROUP_ID=laravel-consumer-group
 KAFKA_CLIENT_ID=laravel-client
 KAFKA_AUTO_OFFSET_RESET=earliest
